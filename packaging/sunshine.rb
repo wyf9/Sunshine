@@ -28,6 +28,7 @@ class @PROJECT_NAME@ < Formula
 
   depends_on "cmake" => :build
   depends_on "doxygen" => :build
+  depends_on "gcc@14" => [:build, :test]
   depends_on "graphviz" => :build
   depends_on "node" => :build
   depends_on "pkgconf" => :build
@@ -39,12 +40,10 @@ class @PROJECT_NAME@ < Formula
   depends_on "icu4c" => :recommended
 
   on_macos do
-    depends_on "llvm" => [:build, :test]
     depends_on xcode: ["15.3", :build]
   end
 
   on_linux do
-    depends_on "gcc@14" => [:build, :test]
     depends_on "avahi"
     depends_on "libayatana-appindicator"
     depends_on "libcap"
@@ -81,12 +80,10 @@ class @PROJECT_NAME@ < Formula
     ENV["BUILD_VERSION"] = "@BUILD_VERSION@"
     ENV["COMMIT"] = "@GITHUB_COMMIT@"
 
-    # Ensure we use GCC 14 consistently on Linux
-    if OS.linux?
-      gcc14 = Formula["gcc@14"]
-      ENV["CC"] = "#{gcc14.opt_bin}/gcc-14"
-      ENV["CXX"] = "#{gcc14.opt_bin}/g++-14"
-    end
+    # Use GCC because gcov from llvm cannot handle our paths
+    gcc14 = Formula["gcc@14"]
+    ENV["CC"] = "#{gcc14.opt_bin}/gcc-14"
+    ENV["CXX"] = "#{gcc14.opt_bin}/g++-14"
 
     args = %W[
       -DBUILD_WERROR=ON
@@ -190,14 +187,9 @@ class @PROJECT_NAME@ < Formula
 
       # Change to the source directory for gcovr to work properly
       cd "#{buildpath}/build" do
-        # Use the same GCC version that was used for compilation
-        gcov_executable = "#{Formula["llvm"].opt_bin}/llvm-cov gcov"
-
-        if OS.linux?
-          # Use GCC 14 to match what was used during compilation
-          gcc14 = Formula["gcc@14"]
-          gcov_executable = "#{gcc14.opt_bin}/gcov-14"
-        end
+        # Use GCC 14 to match what was used during compilation
+        gcc14 = Formula["gcc@14"]
+        gcov_executable = "#{gcc14.opt_bin}/gcov-14"
 
         system "gcovr", ".",
           "-r", "../src",
@@ -205,7 +197,7 @@ class @PROJECT_NAME@ < Formula
           "--exclude-noncode-lines",
           "--exclude-throw-branches",
           "--exclude-unreachable-branches",
-          "--verbose",  # TODO: remove verbose once working
+          "--verbose", # TODO: remove verbose once working
           "--xml-pretty",
           "-o=#{testpath}/coverage.xml"
       end

@@ -12,6 +12,8 @@ on:
       release_version:
         required: true
         type: string
+  workflow_dispatch:
+  
 
 jobs:
   build_linux:
